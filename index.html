@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Importação — Greenport Select</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #C8A96E;
+    --bg: #0A0A0A;
+    --surface: #111111;
+    --border: #1E1E1E;
+    --text: #F0EDE8;
+    --muted: #555;
+    --muted2: #888;
+  }
+  html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'DM Sans', 'Helvetica Neue', sans-serif; }
+  a { text-decoration: none; color: inherit; }
+  input, button { font-family: inherit; }
+
+  /* ── Header ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,10,0.96);
+    backdrop-filter: blur(10px);
+    z-index: 50;
+  }
+  .logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; }
+  .logo-text span { color: var(--accent); }
+  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; margin-top: 3px; }
+  .btn-reset {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    border-radius: 7px;
+    padding: 8px 16px;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: border-color 0.15s;
+  }
+  .btn-reset:hover { border-color: #333; }
+
+  /* ── Layout ── */
+  .container { max-width: 580px; margin: 0 auto; padding: 44px 22px 80px; }
+
+  /* ── Hero ── */
+  .hero { margin-bottom: 40px; }
+  .hero h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: 32px; line-height: 1.2; margin-bottom: 12px; font-weight: 400; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 14px; color: var(--muted2); line-height: 1.7; }
+
+  /* ── Steps ── */
+  .steps { display: flex; align-items: flex-start; margin-bottom: 36px; }
+  .step { flex: 1; text-align: center; }
+  .step-icon { width: 40px; height: 40px; border-radius: 50%; background: #141414; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; margin: 0 auto 8px; }
+  .step-label { font-size: 11px; color: var(--muted2); line-height: 1.4; max-width: 80px; margin: 0 auto; }
+  .step-line { height: 1px; width: 32px; background: var(--border); flex-shrink: 0; margin-bottom: 20px; }
+
+  /* ── Platforms ── */
+  .platforms-label { font-size: 11px; color: var(--muted); letter-spacing: 0.11em; text-transform: uppercase; margin-bottom: 12px; }
+  .platforms-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+  .platform-btn {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    transition: all 0.18s;
+    cursor: pointer;
+  }
+  .platform-btn:hover { background: #161616; border-color: #2A2A2A; }
+  .platform-icon { width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .platform-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
+  .platform-domain { font-size: 10px; color: var(--muted); }
+  .platform-arrow { font-size: 14px; color: var(--muted); margin-left: auto; }
+
+  /* ── URL Input ── */
+  .input-wrap { position: relative; margin-bottom: 12px; }
+  .url-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 14px 118px 14px 16px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .url-input:focus { outline: none; border-color: var(--accent); }
+  .url-input::placeholder { color: #3A3A3A; }
+  .url-input.has-platform { padding-left: 48px; }
+  .url-input.error { border-color: #4A1515; }
+  .input-platform-badge {
+    display: none;
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border-radius: 4px;
+    align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+    pointer-events: none; z-index: 2;
+  }
+  .btn-simulate {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: var(--accent); color: #000;
+    border: none; border-radius: 7px;
+    padding: 10px 22px; font-size: 13px;
+    font-weight: 700; letter-spacing: 0.07em;
+    cursor: pointer; transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .btn-simulate:hover { opacity: 0.88; }
+  .btn-simulate:disabled { opacity: 0.4; cursor: not-allowed; }
+  .error-msg {
+    display: none;
+    margin-top: 10px; font-size: 13px; color: #E07070;
+    padding: 10px 14px; background: #1A0808;
+    border-radius: 8px; border: 1px solid #3A1515;
+  }
+
+  /* ── Loading ── */
+  .loading { display: none; text-align: center; padding: 80px 0; }
+  .spinner {
+    width: 48px; height: 48px; margin: 0 auto 24px;
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 0.85s linear infinite;
+  }
+  .load-msg { font-size: 15px; color: var(--muted2); animation: blink 2.5s ease infinite; }
+
+  /* ── Active URL bar ── */
+  .active-url-bar {
+    display: none;
+    align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px; margin-bottom: 28px;
+  }
+  .active-url-text { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Results ── */
+  .results { display: none; }
+  .result-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .vehicle-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; line-height: 1.2; margin-bottom: 4px; font-weight: 400; }
+  .vehicle-version { font-size: 13px; color: var(--muted2); margin-bottom: 24px; }
+
+  .specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 28px; }
+  .spec-card { background: #0D0D0D; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; }
+  .spec-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+  .spec-value { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  .sim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .sim-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .sim-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .sim-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; }
+  .sim-body { padding: 6px 22px 22px; }
+  .price-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #141414; }
+  .price-row.total { padding: 15px 0 2px; border-bottom: none; border-top: 1px solid var(--border); }
+  .price-label { font-size: 13px; color: var(--muted2); }
+  .price-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .price-value { font-size: 14px; font-weight: 500; color: var(--text); }
+  .price-value.dimmed { color: var(--muted); }
+  .price-value.accent { color: var(--accent); }
+  .price-row.total .price-label { font-size: 14px; font-weight: 700; color: var(--text); }
+  .price-row.total .price-value { font-size: 20px; font-weight: 700; color: var(--text); }
+
+  .notes-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; background: #0D0D0A; }
+  .notes-title { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+  .note-item { display: flex; gap: 10px; font-size: 13px; color: var(--muted2); line-height: 1.55; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .note-item:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+  .note-dash { color: var(--accent); flex-shrink: 0; }
+
+  .disclaimer { font-size: 11px; color: var(--muted); line-height: 1.7; padding: 12px 0 20px; border-top: 1px solid var(--border); }
+
+  .cta-card { background: linear-gradient(135deg, #131108, #0C0C0A); border: 1px solid #22200A; border-radius: 12px; padding: 26px 24px; text-align: center; }
+  .cta-label { font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+  .cta-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 18px; margin-bottom: 8px; line-height: 1.3; font-weight: 400; }
+  .cta-desc { font-size: 13px; color: var(--muted2); margin-bottom: 22px; line-height: 1.6; }
+  .cta-btn { display: inline-block; background: var(--accent); color: #000; padding: 13px 30px; border-radius: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ── Animations ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+  .fade-up { animation: fadeUp 0.45s ease; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="logo-text">GREENPORT <span>SELECT</span></div>
+    <div class="logo-sub">SIMULADOR DE IMPORTAÇÃO</div>
+  </div>
+  <button class="btn-reset" id="btnReset" onclick="reset()">+ Nova simulação</button>
+</div>
+
+<div class="container">
+
+  <!-- LANDING -->
+  <div id="landing" class="fade-up">
+    <div class="hero">
+      <h1>Quanto custa trazer<br><span>esse carro para Portugal?</span></h1>
+      <p>Cola o link do anúncio. O simulador abre a página, lê os dados automaticamente e calcula ISV, transporte e legalização.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">🔍</div>
+        <div class="step-label">Encontra a viatura</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-icon">🔗</div>
+        <div class="step-label">Copia o link</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-icon">⚡</div>
+        <div class="step-label">Cola e simula</div>
+      </div>
+    </div>
+
+    <div class="platforms-label">Plataformas suportadas</div>
+    <div class="platforms-grid">
+      <a href="https://www.mobile.de" target="_blank" class="platform-btn">
+        <div class="platform-icon" style="background:#E8000D">M</div>
+        <div><div class="platform-name">Mobile.de</div><div class="platform-domain">www.mobile.de</div></div>
+        <div class="platform-arrow">↗</div>
+      </a>
+      <a href="https://www.autoscout24.com" target="_blank" class="platform-btn">
+        <div class="platform-icon" style="background:#FF6400">A</div>
+        <div><div class="platform-name">AutoScout24</div><div class="platform-domain">www.autoscout24.com</div></div>
+        <div class="platform-arrow">↗</div>
+      </a>
+      <a href="https://www.coches.net" target="_blank" class="platform-btn">
+        <div class="platform-icon" style="background:#0062CC">C</div>
+        <div><div class="platform-name">Coches.net</div><div class="platform-domain">www.coches.net</div></div>
+        <div class="platform-arrow">↗</div>
+      </a>
+    </div>
+
+    <!-- URL Input -->
+    <div class="input-wrap">
+      <div class="input-platform-badge" id="badge"></div>
+      <input
+        type="text"
+        class="url-input"
+        id="urlInput"
+        placeholder="Cola aqui o link do anúncio…"
+        oninput="onUrlInput()"
+        onkeydown="if(event.key==='Enter') simulate()"
+      />
+      <button class="btn-simulate" onclick="simulate()">Simular</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="load-msg" id="loadMsg">A abrir o anúncio…</div>
+  </div>
+
+  <!-- ACTIVE URL BAR -->
+  <div class="active-url-bar" id="activeUrlBar">
+    <div class="input-platform-badge" id="activeBadge" style="position:static;transform:none;display:flex"></div>
+    <div class="active-url-text" id="activeUrlText"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results fade-up" id="results">
+    <div class="result-label">Veículo identificado</div>
+    <div class="vehicle-title" id="vehicleTitle"></div>
+    <div class="vehicle-version" id="vehicleVersion"></div>
+
+    <div class="specs-grid" id="specsGrid"></div>
+
+    <div class="sim-card">
+      <div class="sim-header">
+        <div class="sim-dot"></div>
+        <div class="sim-title">Simulação — Particular · A Pronto · 2025</div>
+      </div>
+      <div class="sim-body" id="simBody"></div>
+    </div>
+
+    <div class="notes-card" id="notesCard" style="display:none">
+      <div class="notes-title">Notas sobre esta viatura</div>
+      <div id="notesList"></div>
+    </div>
+
+    <div class="disclaimer">
+      Simulação indicativa. ISV calculado com base nas tabelas AT 2025. Sujeito a confirmação consoante estado real do veículo e legislação em vigor.
+    </div>
+
+    <div class="cta-card">
+      <div class="cta-label">Próximo passo</div>
+      <div class="cta-title">Queres avançar com esta viatura?</div>
+      <div class="cta-desc">Pedimos uma proposta formal sem compromisso.<br>Tratamos de tudo — da pesquisa à entrega em Portugal.</div>
+      <a href="https://greenportselect.com" target="_blank" class="cta-btn">Pedir Proposta → greenportselect.com</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PLATFORMS = [
+  { name: 'Mobile.de',   domain: 'mobile.de',      color: '#E8000D' },
+  { name: 'AutoScout24', domain: 'autoscout24.com', color: '#FF6400' },
+  { name: 'Coches.net',  domain: 'coches.net',      color: '#0062CC' },
+];
+const LOAD_MSGS = [
+  'A abrir o anúncio…',
+  'A aceitar cookies e carregar página…',
+  'A extrair dados do veículo…',
+  'A calcular ISV e custos de importação…',
+  'A preparar a tua simulação…',
+];
+
+let loadInterval;
+let currentResult = null;
+
+function detectPlatform(url) {
+  return PLATFORMS.find(p => url.includes(p.domain)) || null;
+}
+
+function fmt(n, zero = 'Isento') {
+  if (n === null || n === undefined || n === '') return '—';
+  if (n === 0) return zero;
+  return Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+}
+
+function fmtKm(n) {
+  if (!n) return '—';
+  return Number(n).toLocaleString('pt-PT') + ' km';
+}
+
+function onUrlInput() {
+  const url = document.getElementById('urlInput').value;
+  const p = detectPlatform(url);
+  const badge = document.getElementById('badge');
+  const input = document.getElementById('urlInput');
+  const errMsg = document.getElementById('errorMsg');
+
+  if (p) {
+    badge.style.display = 'flex';
+    badge.style.background = p.color;
+    badge.textContent = p.name[0];
+    input.classList.add('has-platform');
+  } else {
+    badge.style.display = 'none';
+    input.classList.remove('has-platform');
+  }
+  input.classList.remove('error');
+  errMsg.style.display = 'none';
+}
+
+function showError(msg) {
+  const errMsg = document.getElementById('errorMsg');
+  errMsg.textContent = msg;
+  errMsg.style.display = 'block';
+  document.getElementById('urlInput').classList.add('error');
+}
+
+async function simulate() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { showError('Cola um link de anúncio para continuar.'); return; }
+  const plat = detectPlatform(url);
+  if (!plat) { showError('Só aceita links do Mobile.de, AutoScout24 ou Coches.net.'); return; }
+
+  // Setup loading
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('activeUrlBar').style.display = 'none';
+  document.getElementById('btnReset').style.display = 'none';
+
+  let msgIdx = 0;
+  document.getElementById('loadMsg').textContent = LOAD_MSGS[0];
+  loadInterval = setInterval(() => {
+    msgIdx = (msgIdx + 1) % LOAD_MSGS.length;
+    document.getElementById('loadMsg').textContent = LOAD_MSGS[msgIdx];
+  }, 2500);
+
+  try {
+    const res = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erro desconhecido');
+
+    clearInterval(loadInterval);
+    renderResult(data, url, plat);
+
+  } catch (err) {
+    clearInterval(loadInterval);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('landing').style.display = 'block';
+    showError('Erro: ' + (err.message || 'Não foi possível analisar este anúncio.'));
+  }
+}
+
+function renderResult(data, url, plat) {
+  currentResult = data;
+  const v = data.veiculo || {};
+  const sim = data.simulacao || {};
+
+  // Active URL bar
+  const activeBadge = document.getElementById('activeBadge');
+  activeBadge.style.background = plat.color;
+  activeBadge.textContent = plat.name[0];
+  document.getElementById('activeUrlText').textContent = url;
+  document.getElementById('activeUrlBar').style.display = 'flex';
+
+  // Vehicle header
+  document.getElementById('vehicleTitle').textContent = `${v.marca || ''} ${v.modelo || ''}`.trim() || 'Veículo';
+  const ver = document.getElementById('vehicleVersion');
+  ver.textContent = v.versao || '';
+  ver.style.display = v.versao ? 'block' : 'none';
+
+  // Specs
+  const specs = [
+    { label: 'Quilómetros',    value: fmtKm(v.quilometros) },
+    { label: 'Registo',        value: v.dataRegisto || (v.ano ? String(v.ano) : '—') },
+    { label: 'Combustível',    value: v.combustivel || '—' },
+    { label: 'Potência',       value: v.potenciaCv ? `${v.potenciaCv} cv` : '—' },
+    { label: 'Caixa',          value: v.caixa || '—' },
+    { label: 'País de origem', value: v.pais || '—' },
+  ];
+  document.getElementById('specsGrid').innerHTML = specs.map(s => `
+    <div class="spec-card">
+      <div class="spec-label">${s.label}</div>
+      <div class="spec-value">${s.value}</div>
+    </div>
+  `).join('');
+
+  // Price rows
+  const rows = [
+    { label: 'Valor da viatura',         sub: `Preço em ${plat.name}`,              value: fmt(sim.valorViatura, 'N/D') },
+    { label: 'ISV',                       sub: sim.isvIsento ? 'Veículo 100% elétrico — isento' : v.combustivel?.toLowerCase().includes('plug') ? 'Redução híbrido plug-in' : '', value: sim.isvIsento ? 'Isento' : fmt(sim.isv), dimmed: sim.isvIsento },
+    { label: 'Transporte internacional', sub: v.pais ? `Origem: ${v.pais}` : '',    value: fmt(sim.transporte, 'Incluído') },
+    { label: 'Inspeção e homologação',   sub: '',                                    value: fmt(sim.inspecaoHomologacao, 'Incluído') },
+    { label: 'Legalização e registo',    sub: 'Matrícula PT + IUC 1.º ano',         value: fmt(sim.legalizacao, 'Incluído') },
+    { label: 'Serviço Greenport Select', sub: 'Consultoria, importação e acompanhamento', value: fmt(sim.servicoGreenport), accent: true },
+  ];
+
+  document.getElementById('simBody').innerHTML =
+    rows.map(r => `
+      <div class="price-row" style="${r.dimmed ? 'opacity:0.4' : ''}">
+        <div>
+          <div class="price-label">${r.label}</div>
+          ${r.sub ? `<div class="price-sub">${r.sub}</div>` : ''}
+        </div>
+        <div class="price-value ${r.dimmed ? 'dimmed' : r.accent ? 'accent' : ''}">${r.value}</div>
+      </div>
+    `).join('') +
+    `<div class="price-row total">
+      <div class="price-label">Preço Chave na Mão</div>
+      <div class="price-value">${fmt(sim.totalChaveNaMao, 'N/D')}</div>
+    </div>`;
+
+  // Notes
+  if (data.notas?.length) {
+    document.getElementById('notesList').innerHTML = data.notas.map(n =>
+      `<div class="note-item"><span class="note-dash">—</span><span>${n}</span></div>`
+    ).join('');
+    document.getElementById('notesCard').style.display = 'block';
+  }
+
+  // Show everything
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('btnReset').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function reset() {
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('activeUrlBar').style.display = 'none';
+  document.getElementById('btnReset').style.display = 'none';
+  document.getElementById('urlInput').value = '';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('notesCard').style.display = 'none';
+  document.getElementById('badge').style.display = 'none';
+  document.getElementById('urlInput').classList.remove('has-platform', 'error');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

@@ -1,13 +1,12 @@
 {
-  "name": "greenport-scraper",
-  "version": "1.0.0",
-  "description": "Scraper backend para o simulador de importação Greenport Select",
+  "name": "greenport-simulador",
+  "version": "2.0.0",
+  "description": "Simulador de importação automóvel — Greenport Select",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.19.2",
     "playwright": "^1.44.0"
   },
