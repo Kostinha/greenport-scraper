@@ -68,7 +68,7 @@
 
   /* ── Platforms ── */
   .platforms-label { font-size: 11px; color: var(--muted); letter-spacing: 0.11em; text-transform: uppercase; margin-bottom: 12px; }
-  .platforms-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+  .platforms-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 24px; }
   .platform-btn {
     display: flex; align-items: center; gap: 9px;
     padding: 11px 14px;
@@ -154,7 +154,7 @@
   .vehicle-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; line-height: 1.2; margin-bottom: 4px; font-weight: 400; }
   .vehicle-version { font-size: 13px; color: var(--muted2); margin-bottom: 24px; }
 
-  .specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 28px; }
+  .specs-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 28px; }
   .spec-card { background: #0D0D0D; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; }
   .spec-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
   .spec-value { font-size: 13px; font-weight: 600; color: var(--text); }
@@ -234,21 +234,13 @@
 
     <div class="platforms-label">Plataformas suportadas</div>
     <div class="platforms-grid">
-      <a href="https://www.mobile.de" target="_blank" class="platform-btn">
-        <div class="platform-icon" style="background:#E8000D">M</div>
-        <div><div class="platform-name">Mobile.de</div><div class="platform-domain">www.mobile.de</div></div>
-        <div class="platform-arrow">↗</div>
-      </a>
+
       <a href="https://www.autoscout24.com" target="_blank" class="platform-btn">
         <div class="platform-icon" style="background:#FF6400">A</div>
         <div><div class="platform-name">AutoScout24</div><div class="platform-domain">www.autoscout24.com</div></div>
         <div class="platform-arrow">↗</div>
       </a>
-      <a href="https://www.coches.net" target="_blank" class="platform-btn">
-        <div class="platform-icon" style="background:#0062CC">C</div>
-        <div><div class="platform-name">Coches.net</div><div class="platform-domain">www.coches.net</div></div>
-        <div class="platform-arrow">↗</div>
-      </a>
+
     </div>
 
     <!-- URL Input -->
@@ -316,9 +308,7 @@
 
 <script>
 const PLATFORMS = [
-  { name: 'Mobile.de',   domain: 'mobile.de',      color: '#E8000D' },
   { name: 'AutoScout24', domain: 'autoscout24.com', color: '#FF6400' },
-  { name: 'Coches.net',  domain: 'coches.net',      color: '#0062CC' },
 ];
 const LOAD_MSGS = [
   'A abrir o anúncio…',
