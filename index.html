@@ -4,281 +4,674 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Importação — Greenport Select</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --accent: #C8A96E;
-    --bg: #0A0A0A;
-    --surface: #111111;
-    --border: #1E1E1E;
-    --text: #F0EDE8;
-    --muted: #555;
-    --muted2: #888;
-  }
-  html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'DM Sans', 'Helvetica Neue', sans-serif; }
-  a { text-decoration: none; color: inherit; }
-  input, button { font-family: inherit; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #45B77B;
+  --green-dark: #2d8a58;
+  --black: #000000;
+  --dark: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --border: #222222;
+  --text: #F2F2F2;
+  --muted: #666;
+  --muted2: #999;
+}
 
-  /* ── Header ── */
-  .header {
-    border-bottom: 1px solid var(--border);
-    padding: 18px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    background: rgba(10,10,10,0.96);
-    backdrop-filter: blur(10px);
-    z-index: 50;
-  }
-  .logo-text { font-size: 17px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; }
-  .logo-text span { color: var(--accent); }
-  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; margin-top: 3px; }
-  .btn-reset {
-    display: none;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted2);
-    border-radius: 7px;
-    padding: 8px 16px;
-    font-size: 12px;
-    cursor: pointer;
-    letter-spacing: 0.06em;
-    transition: border-color 0.15s;
-  }
-  .btn-reset:hover { border-color: #333; }
+html, body {
+  min-height: 100vh;
+  background: var(--black);
+  color: var(--text);
+  font-family: 'Montserrat', sans-serif;
+  overflow-x: hidden;
+}
 
-  /* ── Layout ── */
-  .container { max-width: 580px; margin: 0 auto; padding: 44px 22px 80px; }
+/* ── Grain texture overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
 
-  /* ── Hero ── */
-  .hero { margin-bottom: 40px; }
-  .hero h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: 32px; line-height: 1.2; margin-bottom: 12px; font-weight: 400; }
-  .hero h1 span { color: var(--accent); }
-  .hero p { font-size: 14px; color: var(--muted2); line-height: 1.7; }
+/* ── Header ── */
+.header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+}
 
-  /* ── Steps ── */
-  .steps { display: flex; align-items: flex-start; margin-bottom: 36px; }
-  .step { flex: 1; text-align: center; }
-  .step-icon { width: 40px; height: 40px; border-radius: 50%; background: #141414; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; margin: 0 auto 8px; }
-  .step-label { font-size: 11px; color: var(--muted2); line-height: 1.4; max-width: 80px; margin: 0 auto; }
-  .step-line { height: 1px; width: 32px; background: var(--border); flex-shrink: 0; margin-bottom: 20px; }
+.logo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.logo-main {
+  font-family: 'Anton', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--text);
+}
+.logo-main span { color: var(--green); }
+.logo-sub {
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  color: var(--muted2);
+  text-transform: uppercase;
+}
 
-  /* ── Platforms ── */
-  .platforms-label { font-size: 11px; color: var(--muted); letter-spacing: 0.11em; text-transform: uppercase; margin-bottom: 12px; }
-  .platforms-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 24px; }
-  .platform-btn {
-    display: flex; align-items: center; gap: 9px;
-    padding: 11px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    transition: all 0.18s;
-    cursor: pointer;
-  }
-  .platform-btn:hover { background: #161616; border-color: #2A2A2A; }
-  .platform-icon { width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0; }
-  .platform-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
-  .platform-domain { font-size: 10px; color: var(--muted); }
-  .platform-arrow { font-size: 14px; color: var(--muted); margin-left: auto; }
+.btn-reset {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  padding: 8px 20px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+.btn-reset:hover { border-color: var(--green); color: var(--green); }
 
-  /* ── URL Input ── */
-  .input-wrap { position: relative; margin-bottom: 12px; }
-  .url-input {
-    width: 100%;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    padding: 14px 118px 14px 16px;
-    font-size: 14px;
-    transition: border-color 0.2s;
-  }
-  .url-input:focus { outline: none; border-color: var(--accent); }
-  .url-input::placeholder { color: #3A3A3A; }
-  .url-input.has-platform { padding-left: 48px; }
-  .url-input.error { border-color: #4A1515; }
-  .input-platform-badge {
-    display: none;
-    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-    width: 24px; height: 24px; border-radius: 4px;
-    align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 800; color: #fff;
-    pointer-events: none; z-index: 2;
-  }
-  .btn-simulate {
-    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-    background: var(--accent); color: #000;
-    border: none; border-radius: 7px;
-    padding: 10px 22px; font-size: 13px;
-    font-weight: 700; letter-spacing: 0.07em;
-    cursor: pointer; transition: opacity 0.15s;
-    white-space: nowrap;
-  }
-  .btn-simulate:hover { opacity: 0.88; }
-  .btn-simulate:disabled { opacity: 0.4; cursor: not-allowed; }
-  .error-msg {
-    display: none;
-    margin-top: 10px; font-size: 13px; color: #E07070;
-    padding: 10px 14px; background: #1A0808;
-    border-radius: 8px; border: 1px solid #3A1515;
-  }
+/* ── Landing ── */
+#landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 120px 40px 60px;
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+}
 
-  /* ── Loading ── */
-  .loading { display: none; text-align: center; padding: 80px 0; }
-  .spinner {
-    width: 48px; height: 48px; margin: 0 auto 24px;
-    border: 3px solid var(--border);
-    border-top: 3px solid var(--accent);
-    border-radius: 50%;
-    animation: spin 0.85s linear infinite;
-  }
-  .load-msg { font-size: 15px; color: var(--muted2); animation: blink 2.5s ease infinite; }
+.tagline {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--green);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.1s forwards;
+}
 
-  /* ── Active URL bar ── */
-  .active-url-bar {
-    display: none;
-    align-items: center; gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 9px; margin-bottom: 28px;
-  }
-  .active-url-text { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.headline {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(42px, 7vw, 72px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.2s forwards;
+}
+.headline .green { color: var(--green); }
 
-  /* ── Results ── */
-  .results { display: none; }
-  .result-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
-  .vehicle-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; line-height: 1.2; margin-bottom: 4px; font-weight: 400; }
-  .vehicle-version { font-size: 13px; color: var(--muted2); margin-bottom: 24px; }
+.headline-accent {
+  width: 60px;
+  height: 3px;
+  background: var(--green);
+  margin-bottom: 28px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.3s forwards;
+}
 
-  .specs-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 28px; }
-  .spec-card { background: #0D0D0D; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; }
-  .spec-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
-  .spec-value { font-size: 13px; font-weight: 600; color: var(--text); }
+.subline {
+  font-size: 15px;
+  color: var(--muted2);
+  line-height: 1.7;
+  font-weight: 300;
+  margin-bottom: 48px;
+  max-width: 480px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.4s forwards;
+}
 
-  .sim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
-  .sim-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-  .sim-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-  .sim-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; }
-  .sim-body { padding: 6px 22px 22px; }
-  .price-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #141414; }
-  .price-row.total { padding: 15px 0 2px; border-bottom: none; border-top: 1px solid var(--border); }
-  .price-label { font-size: 13px; color: var(--muted2); }
-  .price-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .price-value { font-size: 14px; font-weight: 500; color: var(--text); }
-  .price-value.dimmed { color: var(--muted); }
-  .price-value.accent { color: var(--accent); }
-  .price-row.total .price-label { font-size: 14px; font-weight: 700; color: var(--text); }
-  .price-row.total .price-value { font-size: 20px; font-weight: 700; color: var(--text); }
+/* ── Platform button ── */
+.platform-section {
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.5s forwards;
+}
+.platform-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.platform-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.platform-btn:hover { border-color: var(--green); background: #0d1a12; }
+.platform-icon {
+  width: 28px; height: 28px;
+  background: #FF6400;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+}
+.platform-arrow { color: var(--muted); margin-left: 4px; }
 
-  .notes-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; background: #0D0D0A; }
-  .notes-title { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
-  .note-item { display: flex; gap: 10px; font-size: 13px; color: var(--muted2); line-height: 1.55; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .note-item:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
-  .note-dash { color: var(--accent); flex-shrink: 0; }
+/* ── URL Input ── */
+.input-section {
+  opacity: 0;
+  animation: fadeUp 0.6s ease 0.6s forwards;
+}
 
-  .disclaimer { font-size: 11px; color: var(--muted); line-height: 1.7; padding: 12px 0 20px; border-top: 1px solid var(--border); }
+.input-wrap { position: relative; }
 
-  .cta-card { background: linear-gradient(135deg, #131108, #0C0C0A); border: 1px solid #22200A; border-radius: 12px; padding: 26px 24px; text-align: center; }
-  .cta-label { font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
-  .cta-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 18px; margin-bottom: 8px; line-height: 1.3; font-weight: 400; }
-  .cta-desc { font-size: 13px; color: var(--muted2); margin-bottom: 22px; line-height: 1.6; }
-  .cta-btn { display: inline-block; background: var(--accent); color: #000; padding: 13px 30px; border-radius: 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.input-platform-badge {
+  display: none;
+  position: absolute;
+  left: 16px; top: 50%;
+  transform: translateY(-50%);
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  pointer-events: none; z-index: 2;
+}
 
-  /* ── Animations ── */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-  .fade-up { animation: fadeUp 0.45s ease; }
+.url-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  color: var(--text);
+  padding: 18px 130px 18px 16px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  border-radius: 3px;
+  transition: all 0.2s;
+  outline: none;
+}
+.url-input.has-platform { padding-left: 52px; }
+.url-input:focus { border-color: var(--green); border-bottom-color: var(--green); }
+.url-input::placeholder { color: #444; }
+.url-input.error { border-color: #c0392b; }
+
+.btn-simulate {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 2px;
+  padding: 11px 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-simulate:hover { background: var(--green-dark); }
+
+.error-msg {
+  display: none;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #e74c3c;
+  padding: 10px 14px;
+  background: rgba(231,76,60,0.08);
+  border-left: 2px solid #e74c3c;
+}
+
+/* ── Loading ── */
+#loading {
+  display: none;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loader-logo {
+  font-family: 'Anton', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  margin-bottom: 60px;
+}
+.loader-logo span { color: var(--green); }
+
+.loader-track {
+  width: 240px;
+  height: 2px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.loader-bar {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  animation: loadBar 3s ease-in-out infinite;
+}
+.load-msg {
+  font-size: 13px;
+  color: var(--muted2);
+  letter-spacing: 0.08em;
+  animation: pulse 2s ease infinite;
+}
+
+/* ── Results ── */
+#results { display: none; padding-top: 80px; }
+
+/* Car Hero */
+.car-hero {
+  position: relative;
+  width: 100%;
+  height: 55vh;
+  min-height: 320px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.car-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: heroScale 0.8s ease forwards;
+}
+.car-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.2) 0%,
+    rgba(0,0,0,0) 40%,
+    rgba(0,0,0,0.7) 75%,
+    rgba(0,0,0,1) 100%
+  );
+}
+.car-hero-no-img {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0a0a0a, #111);
+}
+.car-hero-placeholder {
+  font-size: 80px;
+  opacity: 0.08;
+}
+.car-hero-content {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 40px;
+  animation: fadeUp 0.6s ease 0.3s both;
+}
+.car-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--green);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.car-title {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(32px, 5vw, 56px);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  margin-bottom: 6px;
+}
+.car-version {
+  font-size: 14px;
+  color: var(--muted2);
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+.car-tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.car-tag {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 5px 12px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+.car-tag.green { background: rgba(69,183,123,0.12); border-color: rgba(69,183,123,0.3); color: var(--green); }
+
+/* Content area */
+.result-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+/* Specs grid */
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  margin: 40px 0;
+  border: 1px solid var(--border);
+  animation: fadeUp 0.6s ease 0.4s both;
+}
+.spec {
+  background: var(--surface);
+  padding: 18px 20px;
+}
+.spec-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.spec-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Simulation card */
+.sim-card {
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--green);
+  animation: fadeUp 0.6s ease 0.5s both;
+}
+.sim-header {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sim-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.sim-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--green);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.sim-body { padding: 4px 28px 24px; }
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.price-row:last-child { border-bottom: none; }
+.price-row.total {
+  margin-top: 8px;
+  padding: 20px 0 4px;
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+}
+.price-left {}
+.price-label { font-size: 13px; color: var(--muted2); font-weight: 400; }
+.price-sub { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: 0.04em; }
+.price-value { font-size: 14px; font-weight: 600; color: var(--text); }
+.price-value.dimmed { color: var(--muted); font-style: italic; }
+.price-value.accent { color: var(--green); }
+.price-row.total .price-label { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; }
+.price-row.total .price-value { font-family: 'Anton', sans-serif; font-size: 32px; letter-spacing: 0.02em; color: var(--text); }
+
+/* Notes */
+.notes-section {
+  margin-top: 32px;
+  animation: fadeUp 0.6s ease 0.6s both;
+}
+.notes-label {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.note {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted2);
+  line-height: 1.6;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-weight: 300;
+}
+.note:last-child { border-bottom: none; }
+.note-arrow { color: var(--green); flex-shrink: 0; font-weight: 700; }
+
+/* Disclaimer */
+.disclaimer {
+  margin-top: 28px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-left: 2px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  animation: fadeUp 0.6s ease 0.7s both;
+}
+
+/* CTA */
+.cta {
+  margin-top: 40px;
+  padding: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  animation: fadeUp 0.6s ease 0.8s both;
+}
+.cta-text {}
+.cta-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--green);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.cta-heading {
+  font-family: 'Anton', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.cta-desc {
+  font-size: 13px;
+  color: var(--muted2);
+  font-weight: 300;
+  line-height: 1.6;
+}
+.cta-btn {
+  display: block;
+  background: var(--green);
+  color: #000;
+  padding: 16px 32px;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  white-space: nowrap;
+  text-align: center;
+  transition: background 0.2s;
+}
+.cta-btn:hover { background: var(--green-dark); }
+
+/* ── Active URL bar ── */
+.active-url-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 40px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+}
+.active-url-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes heroScale {
+  from { transform: scale(1.05); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes loadBar {
+  0% { width: 0%; margin-left: 0; }
+  50% { width: 70%; }
+  100% { width: 0%; margin-left: 100%; }
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .header { padding: 16px 20px; }
+  #landing { padding: 100px 20px 40px; }
+  .result-content { padding: 0 20px 60px; }
+  .car-hero-content { padding: 20px; }
+  .specs-grid { grid-template-columns: 1fr 1fr; }
+  .cta { grid-template-columns: 1fr; }
+  .sim-body { padding: 4px 20px 20px; }
+  .sim-header { padding: 16px 20px; }
+  .active-url-bar { padding: 10px 20px; }
+}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="header">
-  <div>
-    <div class="logo-text">GREENPORT <span>SELECT</span></div>
-    <div class="logo-sub">SIMULADOR DE IMPORTAÇÃO</div>
+  <div class="logo">
+    <div class="logo-main">GREENPORT <span>SELECT</span></div>
+    <div class="logo-sub">Simulador de Importação</div>
   </div>
-  <button class="btn-reset" id="btnReset" onclick="reset()">+ Nova simulação</button>
+  <button class="btn-reset" id="btnReset" onclick="reset()">Nova simulação</button>
 </div>
 
-<div class="container">
+<!-- LANDING -->
+<div id="landing">
+  <div class="tagline">European Cars. Your Choice. Our Expertise.</div>
+  <div class="headline">Quanto custa<br>trazer este carro<br>para <span class="green">Portugal?</span></div>
+  <div class="headline-accent"></div>
+  <p class="subline">Cola o link do anúncio. O simulador abre a página, lê os dados automaticamente e calcula ISV, transporte e legalização — tudo em segundos.</p>
 
-  <!-- LANDING -->
-  <div id="landing" class="fade-up">
-    <div class="hero">
-      <h1>Quanto custa trazer<br><span>esse carro para Portugal?</span></h1>
-      <p>Cola o link do anúncio. O simulador abre a página, lê os dados automaticamente e calcula ISV, transporte e legalização.</p>
-    </div>
+  <div class="platform-section">
+    <div class="platform-label">Plataforma suportada</div>
+    <a href="https://www.autoscout24.com" target="_blank" class="platform-btn">
+      <div class="platform-icon">A</div>
+      AutoScout24
+      <span class="platform-arrow">↗</span>
+    </a>
+  </div>
 
-    <div class="steps">
-      <div class="step">
-        <div class="step-icon">🔍</div>
-        <div class="step-label">Encontra a viatura</div>
-      </div>
-      <div class="step-line"></div>
-      <div class="step">
-        <div class="step-icon">🔗</div>
-        <div class="step-label">Copia o link</div>
-      </div>
-      <div class="step-line"></div>
-      <div class="step">
-        <div class="step-icon">⚡</div>
-        <div class="step-label">Cola e simula</div>
-      </div>
-    </div>
-
-    <div class="platforms-label">Plataformas suportadas</div>
-    <div class="platforms-grid">
-
-      <a href="https://www.autoscout24.com" target="_blank" class="platform-btn">
-        <div class="platform-icon" style="background:#FF6400">A</div>
-        <div><div class="platform-name">AutoScout24</div><div class="platform-domain">www.autoscout24.com</div></div>
-        <div class="platform-arrow">↗</div>
-      </a>
-
-    </div>
-
-    <!-- URL Input -->
+  <div class="input-section">
     <div class="input-wrap">
-      <div class="input-platform-badge" id="badge"></div>
+      <div class="input-platform-badge" id="badge" style="background:#FF6400">A</div>
       <input
         type="text"
         class="url-input"
         id="urlInput"
-        placeholder="Cola aqui o link do anúncio…"
+        placeholder="Cola aqui o link do anúncio AutoScout24…"
         oninput="onUrlInput()"
         onkeydown="if(event.key==='Enter') simulate()"
       />
-      <button class="btn-simulate" onclick="simulate()">Simular</button>
+      <button class="btn-simulate" onclick="simulate()">Simular →</button>
     </div>
     <div class="error-msg" id="errorMsg"></div>
   </div>
+</div>
 
-  <!-- LOADING -->
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div class="load-msg" id="loadMsg">A abrir o anúncio…</div>
+<!-- LOADING -->
+<div id="loading">
+  <div class="loader-logo">GREENPORT <span>SELECT</span></div>
+  <div class="loader-track"><div class="loader-bar"></div></div>
+  <div class="load-msg" id="loadMsg">A abrir o anúncio…</div>
+</div>
+
+<!-- ACTIVE URL -->
+<div class="active-url-bar" id="activeUrlBar">
+  <div style="width:20px;height:20px;background:#FF6400;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">A</div>
+  <div class="active-url-text" id="activeUrlText"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results">
+
+  <!-- Hero car image -->
+  <div class="car-hero" id="carHero">
+    <div class="car-hero-no-img" id="heroPlaceholder">
+      <div class="car-hero-placeholder">🚗</div>
+    </div>
+    <div class="car-hero-gradient"></div>
+    <div class="car-hero-content">
+      <div class="car-badge" id="carBadge">Veículo identificado</div>
+      <div class="car-title" id="carTitle">—</div>
+      <div class="car-version" id="carVersion"></div>
+      <div class="car-tags" id="carTags"></div>
+    </div>
   </div>
 
-  <!-- ACTIVE URL BAR -->
-  <div class="active-url-bar" id="activeUrlBar">
-    <div class="input-platform-badge" id="activeBadge" style="position:static;transform:none;display:flex"></div>
-    <div class="active-url-text" id="activeUrlText"></div>
-  </div>
+  <!-- Content -->
+  <div class="result-content">
 
-  <!-- RESULTS -->
-  <div class="results fade-up" id="results">
-    <div class="result-label">Veículo identificado</div>
-    <div class="vehicle-title" id="vehicleTitle"></div>
-    <div class="vehicle-version" id="vehicleVersion"></div>
-
+    <!-- Specs -->
     <div class="specs-grid" id="specsGrid"></div>
 
+    <!-- Simulation -->
     <div class="sim-card">
       <div class="sim-header">
         <div class="sim-dot"></div>
@@ -287,101 +680,87 @@
       <div class="sim-body" id="simBody"></div>
     </div>
 
-    <div class="notes-card" id="notesCard" style="display:none">
-      <div class="notes-title">Notas sobre esta viatura</div>
+    <!-- Notes -->
+    <div class="notes-section" id="notesSection" style="display:none">
+      <div class="notes-label">Notas sobre esta viatura</div>
       <div id="notesList"></div>
     </div>
 
+    <!-- Disclaimer -->
     <div class="disclaimer">
-      Simulação indicativa. ISV calculado com base nas tabelas AT 2025. Sujeito a confirmação consoante estado real do veículo e legislação em vigor.
+      Simulação indicativa. ISV calculado com base nas tabelas AT 2025. Valores sujeitos a confirmação consoante estado real do veículo, câmbio EUR e legislação em vigor. Não substitui proposta formal.
     </div>
 
-    <div class="cta-card">
-      <div class="cta-label">Próximo passo</div>
-      <div class="cta-title">Queres avançar com esta viatura?</div>
-      <div class="cta-desc">Pedimos uma proposta formal sem compromisso.<br>Tratamos de tudo — da pesquisa à entrega em Portugal.</div>
-      <a href="https://greenportselect.com" target="_blank" class="cta-btn">Pedir Proposta → greenportselect.com</a>
+    <!-- CTA -->
+    <div class="cta">
+      <div class="cta-text">
+        <div class="cta-eyebrow">Próximo passo</div>
+        <div class="cta-heading">Avança com este carro</div>
+        <div class="cta-desc">Proposta formal sem compromisso. Tratamos de tudo — da pesquisa à entrega em Portugal.</div>
+      </div>
+      <a href="https://greenportselect.com" target="_blank" class="cta-btn">Pedir Proposta</a>
     </div>
+
   </div>
-
 </div>
 
 <script>
-const PLATFORMS = [
-  { name: 'AutoScout24', domain: 'autoscout24.com', color: '#FF6400' },
-];
 const LOAD_MSGS = [
   'A abrir o anúncio…',
-  'A aceitar cookies e carregar página…',
+  'A carregar a página e aceitar cookies…',
   'A extrair dados do veículo…',
-  'A calcular ISV e custos de importação…',
+  'A calcular ISV e custos…',
   'A preparar a tua simulação…',
 ];
 
 let loadInterval;
-let currentResult = null;
-
-function detectPlatform(url) {
-  return PLATFORMS.find(p => url.includes(p.domain)) || null;
-}
-
-function fmt(n, zero = 'Isento') {
-  if (n === null || n === undefined || n === '') return '—';
-  if (n === 0) return zero;
-  return Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
-}
-
-function fmtKm(n) {
-  if (!n) return '—';
-  return Number(n).toLocaleString('pt-PT') + ' km';
-}
 
 function onUrlInput() {
   const url = document.getElementById('urlInput').value;
-  const p = detectPlatform(url);
   const badge = document.getElementById('badge');
   const input = document.getElementById('urlInput');
-  const errMsg = document.getElementById('errorMsg');
-
-  if (p) {
+  if (url.includes('autoscout24')) {
     badge.style.display = 'flex';
-    badge.style.background = p.color;
-    badge.textContent = p.name[0];
     input.classList.add('has-platform');
   } else {
     badge.style.display = 'none';
     input.classList.remove('has-platform');
   }
   input.classList.remove('error');
-  errMsg.style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
 }
 
 function showError(msg) {
-  const errMsg = document.getElementById('errorMsg');
-  errMsg.textContent = msg;
-  errMsg.style.display = 'block';
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
   document.getElementById('urlInput').classList.add('error');
 }
+
+function fmt(n, zero = 'Isento') {
+  if (n === null || n === undefined || n === '') return '—';
+  if (n === 0) return zero;
+  return Number(n).toLocaleString('pt-PT', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' €';
+}
+function fmtKm(n) { return n ? Number(n).toLocaleString('pt-PT') + ' km' : '—'; }
 
 async function simulate() {
   const url = document.getElementById('urlInput').value.trim();
   if (!url) { showError('Cola um link de anúncio para continuar.'); return; }
-  const plat = detectPlatform(url);
-  if (!plat) { showError('Só aceita links do Mobile.de, AutoScout24 ou Coches.net.'); return; }
+  if (!url.includes('autoscout24')) { showError('Só aceita links do AutoScout24.'); return; }
 
-  // Setup loading
   document.getElementById('landing').style.display = 'none';
-  document.getElementById('loading').style.display = 'block';
+  document.getElementById('loading').style.display = 'flex';
   document.getElementById('results').style.display = 'none';
   document.getElementById('activeUrlBar').style.display = 'none';
   document.getElementById('btnReset').style.display = 'none';
 
-  let msgIdx = 0;
+  let mi = 0;
   document.getElementById('loadMsg').textContent = LOAD_MSGS[0];
   loadInterval = setInterval(() => {
-    msgIdx = (msgIdx + 1) % LOAD_MSGS.length;
-    document.getElementById('loadMsg').textContent = LOAD_MSGS[msgIdx];
-  }, 2500);
+    mi = (mi + 1) % LOAD_MSGS.length;
+    document.getElementById('loadMsg').textContent = LOAD_MSGS[mi];
+  }, 2800);
 
   try {
     const res = await fetch('/api/simulate', {
@@ -389,69 +768,81 @@ async function simulate() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
-
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Erro desconhecido');
-
     clearInterval(loadInterval);
-    renderResult(data, url, plat);
-
-  } catch (err) {
+    renderResult(data, url);
+  } catch(err) {
     clearInterval(loadInterval);
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('landing').style.display = 'block';
-    showError('Erro: ' + (err.message || 'Não foi possível analisar este anúncio.'));
+    document.getElementById('landing').style.display = 'flex';
+    showError('Erro: ' + (err.message || 'Não foi possível analisar o anúncio.'));
   }
 }
 
-function renderResult(data, url, plat) {
-  currentResult = data;
+function renderResult(data, url) {
   const v = data.veiculo || {};
   const sim = data.simulacao || {};
 
   // Active URL bar
-  const activeBadge = document.getElementById('activeBadge');
-  activeBadge.style.background = plat.color;
-  activeBadge.textContent = plat.name[0];
   document.getElementById('activeUrlText').textContent = url;
   document.getElementById('activeUrlBar').style.display = 'flex';
 
-  // Vehicle header
-  document.getElementById('vehicleTitle').textContent = `${v.marca || ''} ${v.modelo || ''}`.trim() || 'Veículo';
-  const ver = document.getElementById('vehicleVersion');
-  ver.textContent = v.versao || '';
-  ver.style.display = v.versao ? 'block' : 'none';
+  // Car image
+  const hero = document.getElementById('carHero');
+  const placeholder = document.getElementById('heroPlaceholder');
+  if (data.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'car-hero-img';
+    img.src = data.imageUrl;
+    img.alt = `${v.marca} ${v.modelo}`;
+    img.onerror = () => img.remove();
+    hero.insertBefore(img, hero.firstChild);
+    placeholder.style.display = 'none';
+  }
+
+  // Car header
+  document.getElementById('carTitle').textContent = `${v.marca || ''} ${v.modelo || ''}`.trim() || 'Veículo';
+  const verEl = document.getElementById('carVersion');
+  verEl.textContent = v.versao || '';
+  verEl.style.display = v.versao ? 'block' : 'none';
+
+  // Tags
+  const tags = [];
+  if (v.ano) tags.push({ text: v.ano, green: false });
+  if (v.combustivel) tags.push({ text: v.combustivel, green: sim.isvIsento });
+  if (v.pais) tags.push({ text: v.pais, green: false });
+  document.getElementById('carTags').innerHTML = tags
+    .map(t => `<span class="car-tag ${t.green ? 'green' : ''}">${t.text}</span>`)
+    .join('');
 
   // Specs
   const specs = [
-    { label: 'Quilómetros',    value: fmtKm(v.quilometros) },
-    { label: 'Registo',        value: v.dataRegisto || (v.ano ? String(v.ano) : '—') },
-    { label: 'Combustível',    value: v.combustivel || '—' },
-    { label: 'Potência',       value: v.potenciaCv ? `${v.potenciaCv} cv` : '—' },
-    { label: 'Caixa',          value: v.caixa || '—' },
-    { label: 'País de origem', value: v.pais || '—' },
+    { label: 'Quilómetros', value: fmtKm(v.quilometros) },
+    { label: 'Registo', value: v.dataRegisto || (v.ano ? String(v.ano) : '—') },
+    { label: 'Combustível', value: v.combustivel || '—' },
+    { label: 'Potência', value: v.potenciaCv ? `${v.potenciaCv} cv` : '—' },
+    { label: 'Caixa', value: v.caixa || '—' },
+    { label: 'País origem', value: v.pais || '—' },
   ];
-  document.getElementById('specsGrid').innerHTML = specs.map(s => `
-    <div class="spec-card">
-      <div class="spec-label">${s.label}</div>
-      <div class="spec-value">${s.value}</div>
-    </div>
-  `).join('');
+  document.getElementById('specsGrid').innerHTML = specs
+    .map(s => `<div class="spec"><div class="spec-label">${s.label}</div><div class="spec-value">${s.value}</div></div>`)
+    .join('');
 
   // Price rows
   const rows = [
-    { label: 'Valor da viatura',         sub: `Preço em ${plat.name}`,              value: fmt(sim.valorViatura, 'N/D') },
-    { label: 'ISV',                       sub: sim.isvIsento ? 'Veículo 100% elétrico — isento' : v.combustivel?.toLowerCase().includes('plug') ? 'Redução híbrido plug-in' : '', value: sim.isvIsento ? 'Isento' : fmt(sim.isv), dimmed: sim.isvIsento },
-    { label: 'Transporte internacional', sub: v.pais ? `Origem: ${v.pais}` : '',    value: fmt(sim.transporte, 'Incluído') },
-    { label: 'Inspeção e homologação',   sub: '',                                    value: fmt(sim.inspecaoHomologacao, 'Incluído') },
-    { label: 'Legalização e registo',    sub: 'Matrícula PT + IUC 1.º ano',         value: fmt(sim.legalizacao, 'Incluído') },
+    { label: 'Valor da viatura', sub: 'Preço em AutoScout24', value: fmt(sim.valorViatura, 'N/D') },
+    { label: 'ISV', sub: sim.isvIsento ? 'Elétrico — totalmente isento' : v.combustivel?.toLowerCase().includes('plug') ? 'Redução híbrido plug-in' : '', value: sim.isvIsento ? 'Isento' : fmt(sim.isv), dimmed: sim.isvIsento },
+    { label: 'Transporte internacional', sub: v.pais ? `Origem: ${v.pais}` : '', value: fmt(sim.transporte, 'Incluído') },
+    { label: 'Inspeção e homologação', sub: '', value: fmt(sim.inspecaoHomologacao, 'Incluído') },
+    { label: 'Legalização e registo', sub: 'Matrícula PT + IUC 1.º ano', value: fmt(sim.legalizacao, 'Incluído') },
     { label: 'Serviço Greenport Select', sub: 'Consultoria, importação e acompanhamento', value: fmt(sim.servicoGreenport), accent: true },
   ];
 
   document.getElementById('simBody').innerHTML =
     rows.map(r => `
-      <div class="price-row" style="${r.dimmed ? 'opacity:0.4' : ''}">
-        <div>
+      <div class="price-row" style="${r.dimmed ? 'opacity:0.45' : ''}">
+        <div class="price-left">
           <div class="price-label">${r.label}</div>
           ${r.sub ? `<div class="price-sub">${r.sub}</div>` : ''}
         </div>
@@ -465,13 +856,13 @@ function renderResult(data, url, plat) {
 
   // Notes
   if (data.notas?.length) {
-    document.getElementById('notesList').innerHTML = data.notas.map(n =>
-      `<div class="note-item"><span class="note-dash">—</span><span>${n}</span></div>`
-    ).join('');
-    document.getElementById('notesCard').style.display = 'block';
+    document.getElementById('notesList').innerHTML = data.notas
+      .map(n => `<div class="note"><span class="note-arrow">›</span><span>${n}</span></div>`)
+      .join('');
+    document.getElementById('notesSection').style.display = 'block';
   }
 
-  // Show everything
+  // Show
   document.getElementById('loading').style.display = 'none';
   document.getElementById('results').style.display = 'block';
   document.getElementById('btnReset').style.display = 'block';
@@ -479,16 +870,21 @@ function renderResult(data, url, plat) {
 }
 
 function reset() {
-  document.getElementById('landing').style.display = 'block';
+  document.getElementById('landing').style.display = 'flex';
   document.getElementById('results').style.display = 'none';
   document.getElementById('loading').style.display = 'none';
   document.getElementById('activeUrlBar').style.display = 'none';
   document.getElementById('btnReset').style.display = 'none';
   document.getElementById('urlInput').value = '';
   document.getElementById('errorMsg').style.display = 'none';
-  document.getElementById('notesCard').style.display = 'none';
+  document.getElementById('notesSection').style.display = 'none';
   document.getElementById('badge').style.display = 'none';
   document.getElementById('urlInput').classList.remove('has-platform', 'error');
+  // Reset hero image
+  const hero = document.getElementById('carHero');
+  const oldImg = hero.querySelector('img');
+  if (oldImg) oldImg.remove();
+  document.getElementById('heroPlaceholder').style.display = 'flex';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>

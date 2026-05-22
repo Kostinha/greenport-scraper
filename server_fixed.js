@@ -14,32 +14,18 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PROXY_USER = process.env.PROXY_USER;
 const PROXY_PASS = process.env.PROXY_PASS;
 
-// Proxies europeus primeiro (melhor para Mobile.de)
 const PROXIES = [
-  { server: 'http://64.137.96.74:6641' },    // Espanha
-  { server: 'http://198.105.121.200:6462' },  // UK
-  { server: 'http://84.247.60.125:6095' },    // Polónia
-  { server: 'http://23.95.150.145:6114' },    // US
-  { server: 'http://38.154.203.95:5863' },    // US
+  { server: 'http://64.137.96.74:6641' },
+  { server: 'http://198.105.121.200:6462' },
+  { server: 'http://84.247.60.125:6095' },
+  { server: 'http://23.95.150.145:6114' },
+  { server: 'http://38.154.203.95:5863' },
 ];
 
 const CONSENT_SELECTORS = {
-  'mobile.de': [
-    '[data-testid="mde-consent-accept-btn"]',
-    '.sp_choice_type_11',
-    'button[title*="Accept"]',
-    'button[title*="Akzeptieren"]',
-    'button:has-text("Akzeptieren")',
-    'button:has-text("Accept all")',
-  ],
-  'autoscout24.com': [
-    '#_evidon-accept-button',
-    'button[id*="accept-all"]',
-    'button:has-text("Accept All")',
-  ],
-  'coches.net': [
-    '#didomi-notice-agree-button',
-  ],
+  'mobile.de': ['[data-testid="mde-consent-accept-btn"]', '.sp_choice_type_11', 'button[title*="Akzeptieren"]'],
+  'autoscout24.com': ['#_evidon-accept-button', 'button[id*="accept-all"]', 'button:has-text("Accept All")'],
+  'coches.net': ['#didomi-notice-agree-button'],
 };
 
 function getPlatform(url) {
@@ -80,10 +66,15 @@ function callClaude(prompt) {
   });
 }
 
-async function scrapeWithProxy(url, platform, proxyConfig) {
+async function scrape(url, platform, proxy) {
   let browser;
   try {
-    const contextOptions = {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+    });
+
+    const ctxOpts = {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       locale: 'de-DE',
       timezoneId: 'Europe/Berlin',
@@ -91,43 +82,27 @@ async function scrapeWithProxy(url, platform, proxyConfig) {
       extraHTTPHeaders: {
         'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
         'Upgrade-Insecure-Requests': '1',
       },
     };
 
-    if (proxyConfig) {
-      contextOptions.proxy = {
-        server: proxyConfig.server,
-        username: PROXY_USER,
-        password: PROXY_PASS,
-      };
+    if (proxy && PROXY_USER) {
+      ctxOpts.proxy = { server: proxy.server, username: PROXY_USER, password: PROXY_PASS };
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
-    });
-
-    const context = await browser.newContext(contextOptions);
-
+    const context = await browser.newContext(ctxOpts);
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
-      Object.defineProperty(navigator, 'languages', { get: () => ['de-DE','de','en'] });
       window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {}, app: {} };
     });
 
     const page = await context.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
-    await page.waitForTimeout(2500 + Math.random() * 1500);
+    await page.waitForTimeout(2500 + Math.random() * 1000);
 
     // Aceitar cookies
-    const selectors = CONSENT_SELECTORS[platform] || [];
-    for (const sel of selectors) {
+    for (const sel of (CONSENT_SELECTORS[platform] || [])) {
       try {
         const el = await page.$(sel);
         if (el) { await el.click(); await page.waitForTimeout(1500); break; }
@@ -137,6 +112,20 @@ async function scrapeWithProxy(url, platform, proxyConfig) {
     await page.waitForTimeout(2000);
 
     const title = await page.title();
+
+    // Extrair imagem principal (og:image ou primeira img relevante)
+    const imageUrl = await page.evaluate(() => {
+      const og = document.querySelector('meta[property="og:image"]')?.content;
+      if (og) return og;
+      const imgs = Array.from(document.querySelectorAll('img[src]'));
+      const big = imgs.find(img => {
+        const src = img.src || '';
+        return src.includes('http') && !src.includes('logo') && !src.includes('icon') &&
+               img.naturalWidth > 200;
+      });
+      return big?.src || null;
+    });
+
     const bodyText = await page.evaluate(() => {
       document.querySelectorAll('script,style,nav,footer,header,iframe,[class*="cookie"],[id*="cookie"],[class*="consent"],[class*="gdpr"],[class*="overlay"]').forEach(e => e.remove());
       return document.body.innerText.split('\n').map(l => l.trim()).filter(l => l.length > 2).join('\n');
@@ -145,7 +134,7 @@ async function scrapeWithProxy(url, platform, proxyConfig) {
     await browser.close();
     browser = null;
 
-    return { title, bodyText };
+    return { title, bodyText, imageUrl };
   } catch(err) {
     if (browser) await browser.close().catch(()=>{});
     throw err;
@@ -161,41 +150,32 @@ app.post('/api/simulate', async (req, res) => {
   if (!platform) return res.status(400).json({ error: 'Plataforma não suportada.' });
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada.' });
 
-  let title, bodyText;
+  let title, bodyText, imageUrl;
 
-  if (platform === 'mobile.de' && PROXY_USER) {
-    // Tentar com proxies rotativos
-    let lastError;
-    for (const proxy of PROXIES) {
-      try {
-        console.log(`[scrape] mobile.de via proxy ${proxy.server} → ${url.slice(0, 60)}`);
-        const result = await scrapeWithProxy(url, platform, proxy);
-        if (result.bodyText.length > 500) {
-          title = result.title;
-          bodyText = result.bodyText;
-          console.log(`[scrape] OK via proxy — ${bodyText.length} chars`);
-          break;
-        } else {
-          console.log(`[scrape] Proxy ${proxy.server} bloqueado (${result.bodyText.length} chars), a tentar próximo...`);
-          lastError = new Error('Conteúdo insuficiente');
-        }
-      } catch(err) {
-        console.log(`[scrape] Proxy ${proxy.server} falhou: ${err.message}`);
-        lastError = err;
+  try {
+    if (platform === 'mobile.de' && PROXY_USER) {
+      let lastErr;
+      for (const proxy of PROXIES) {
+        try {
+          console.log(`[scrape] mobile.de via ${proxy.server}`);
+          const r = await scrape(url, platform, proxy);
+          if (r.bodyText.length > 500) { ({ title, bodyText, imageUrl } = r); break; }
+          lastErr = new Error('Conteúdo insuficiente');
+        } catch(e) { lastErr = e; }
       }
+      if (!bodyText) throw lastErr;
+    } else {
+      console.log(`[scrape] ${platform} → ${url.slice(0, 70)}`);
+      const r = await scrape(url, platform, null);
+      ({ title, bodyText, imageUrl } = r);
+      console.log(`[scrape] OK — ${bodyText.length} chars | img: ${imageUrl ? 'sim' : 'não'}`);
     }
-    if (!bodyText) throw lastError || new Error('Todos os proxies falharam');
-  } else {
-    // AutoScout24 / Coches.net — directo
-    console.log(`[scrape] ${platform} → ${url.slice(0, 70)}`);
-    const result = await scrapeWithProxy(url, platform, null);
-    title = result.title;
-    bodyText = result.bodyText;
-    console.log(`[scrape] OK — ${bodyText.length} chars`);
+  } catch(err) {
+    return res.status(500).json({ error: err.message });
   }
 
   if (!bodyText || bodyText.length < 300) {
-    return res.status(500).json({ error: 'Não foi possível extrair dados do anúncio. Tenta outro link.' });
+    return res.status(500).json({ error: 'Não foi possível extrair dados do anúncio.' });
   }
 
   try {
@@ -213,7 +193,7 @@ ISV PORTUGAL 2025:
 - Híbrido plug-in: redução 60-75%
 - Gasolina/Diesel: componente cilindrada + CO2 (tabela AT progressiva)
 
-OUTROS CUSTOS:
+CUSTOS:
 - Transporte: 900-1400€ (conforme país)
 - Inspeção e homologação: 280-420€
 - Legalização e registo: 380-600€
@@ -236,10 +216,10 @@ Responde APENAS JSON puro:
     const recalc = (sim.valorViatura||0)+(sim.isv||0)+(sim.transporte||0)+(sim.inspecaoHomologacao||0)+(sim.legalizacao||0)+(sim.servicoGreenport||0);
     if (Math.abs(recalc-(sim.totalChaveNaMao||0)) > 100) sim.totalChaveNaMao = recalc;
     result.platform = platform;
+    result.imageUrl = imageUrl || null;
     res.json(result);
-
   } catch(err) {
-    console.error('[claude] ERRO:', err.message);
+    console.error('[claude]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -247,4 +227,4 @@ Responde APENAS JSON puro:
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✓ Greenport Simulador v3 activo na porta ${PORT}`));
+app.listen(PORT, () => console.log(`✓ Greenport Simulador v4 na porta ${PORT}`));
