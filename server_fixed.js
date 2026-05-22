@@ -32,11 +32,121 @@ function getPlatform(url) {
   return Object.keys(CONSENT_SELECTORS).find(p => url.includes(p)) || null;
 }
 
+// ── CALCULADORA ISV — TABELAS AT 2025/2026 ────────────────────────────────────
+function calcularISV(v) {
+  const { combustivel, cilindrada, co2GKm, dataRegisto } = v;
+
+  const fuel = (combustivel || '').toLowerCase();
+  const cc = Number(cilindrada) || 0;
+  const co2 = Number(co2GKm) || 0;
+
+  // Elétrico puro — isento
+  if (fuel.includes('elétric') || fuel.includes('electr') || fuel.includes('bev')) {
+    return { isv: 0, isvIsento: true };
+  }
+
+  // Determinar norma (WLTP para veículos >= 2020)
+  const ano = dataRegisto
+    ? parseInt(dataRegisto.split('/').pop() || dataRegisto)
+    : (Number(v.ano) || 2022);
+  const isWLTP = ano >= 2020;
+  const isDiesel = fuel.includes('diesel') || fuel.includes('gasóleo') || fuel.includes('gasoleo');
+  const isPhev = fuel.includes('plug') || fuel.includes('phev');
+  const isMildHybrid = (fuel.includes('híbrido') || fuel.includes('hybrid')) && !isPhev;
+
+  // ── Componente cilindrada (tabela igual para todos os combustíveis) ──────────
+  let cCilindrada = 0;
+  if (cc > 0) {
+    if (cc <= 1000) cCilindrada = cc * 1.09 - 849.03;
+    else if (cc <= 1250) cCilindrada = cc * 1.18 - 850.69;
+    else cCilindrada = cc * 5.61 - 6194.88;
+    cCilindrada = Math.max(0, cCilindrada);
+  }
+
+  // ── Componente ambiental CO2 ─────────────────────────────────────────────────
+  let cCo2 = 0;
+  if (co2 > 0) {
+    if (isDiesel) {
+      // Diesel: converter WLTP para NEDC equivalente (factor 1.21) e usar tabela NEDC
+      // Tabelas AT confirmadas — impostosobreveiculos.info
+      const co2Calc = isWLTP ? co2 / 1.21 : co2;
+      if (co2Calc <= 79)       cCo2 = co2Calc * 5.78 - 439.04;
+      else if (co2Calc <= 95)  cCo2 = co2Calc * 23.45 - 1848.58;
+      else if (co2Calc <= 120) cCo2 = co2Calc * 79.22 - 7195.63;
+      else if (co2Calc <= 140) cCo2 = co2Calc * 175.73 - 18924.92;
+      else if (co2Calc <= 160) cCo2 = co2Calc * 195.43 - 21720.92;
+      else                      cCo2 = co2Calc * 268.42 - 33447.90;
+    } else if (isWLTP) {
+      // Gasolina/GPL WLTP — tabela AT 2025/2026
+      if (co2 <= 110)       cCo2 = co2 * 0.44 - 43.02;
+      else if (co2 <= 115)  cCo2 = co2 * 1.10 - 115.80;
+      else if (co2 <= 120)  cCo2 = co2 * 1.38 - 147.79;
+      else if (co2 <= 130)  cCo2 = co2 * 5.27 - 619.17;
+      else if (co2 <= 145)  cCo2 = co2 * 6.38 - 762.73;
+      else if (co2 <= 175)  cCo2 = co2 * 41.54 - 5819.56;
+      else if (co2 <= 195)  cCo2 = co2 * 51.38 - 7247.39;
+      else if (co2 <= 235)  cCo2 = co2 * 193.01 - 34190.52;
+      else                   cCo2 = co2 * 233.81 - 41910.96;
+    } else {
+      // Gasolina/GPL NEDC — tabela AT 2025/2026
+      if (co2 <= 99)        cCo2 = co2 * 4.62 - 427.00;
+      else if (co2 <= 115)  cCo2 = co2 * 8.09 - 750.99;
+      else if (co2 <= 145)  cCo2 = co2 * 52.56 - 5903.94;
+      else if (co2 <= 175)  cCo2 = co2 * 61.24 - 7140.17;
+      else if (co2 <= 195)  cCo2 = co2 * 155.97 - 23627.27;
+      else                   cCo2 = co2 * 205.65 - 33390.12;
+    }
+    cCo2 = Math.max(0, cCo2);
+  }
+
+  let isvBase = cCilindrada + cCo2;
+
+  // ── Reduções por tipo de veículo ─────────────────────────────────────────────
+  if (isPhev) {
+    isvBase *= 0.25; // Híbrido plug-in: paga só 25%
+  } else if (isMildHybrid) {
+    isvBase *= 0.60; // Mild hybrid / full hybrid: paga 60%
+  }
+
+  // ── Desconto por idade (usados UE) — Tabela unificada desde 2025 ─────────────
+  // Fonte: AutoGo.pt / Autoridade Tributária
+  let descontoIdade = 0;
+  if (dataRegisto) {
+    const parts = dataRegisto.split('/');
+    const regMes = parts.length >= 2 ? parseInt(parts[0]) : 1;
+    const regAno = parseInt(parts[parts.length - 1]);
+    if (!isNaN(regAno)) {
+      const now = new Date();
+      const ageMonths = (now.getFullYear() - regAno) * 12 + (now.getMonth() + 1 - regMes);
+      const ageYears = ageMonths / 12;
+      if      (ageYears <= 1)  descontoIdade = 0.10;
+      else if (ageYears <= 2)  descontoIdade = 0.20;
+      else if (ageYears <= 3)  descontoIdade = 0.28;
+      else if (ageYears <= 4)  descontoIdade = 0.35;
+      else if (ageYears <= 5)  descontoIdade = 0.43;
+      else if (ageYears <= 6)  descontoIdade = 0.52;
+      else if (ageYears <= 7)  descontoIdade = 0.60;
+      else if (ageYears <= 8)  descontoIdade = 0.65;
+      else if (ageYears <= 9)  descontoIdade = 0.70;
+      else if (ageYears <= 10) descontoIdade = 0.75;
+      else                      descontoIdade = 0.80;
+    }
+  }
+  isvBase *= (1 - descontoIdade);
+
+  // ── Agravamento diesel (partículas) — 500€ sobre o ISV já reduzido ───────────
+  // Aplicado após redução de idade (é uma taxa fixa, não percentual)
+  if (isDiesel && !isPhev) isvBase += 500;
+
+  return { isv: Math.max(100, Math.round(isvBase)), isvIsento: false };
+}
+
+// ── Claude API ────────────────────────────────────────────────────────────────
 function callClaude(prompt) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      max_tokens: 1200,
       messages: [{ role: 'user', content: prompt }],
     });
     const req = https.request({
@@ -66,6 +176,7 @@ function callClaude(prompt) {
   });
 }
 
+// ── Scraping ──────────────────────────────────────────────────────────────────
 async function scrape(url, platform, proxy) {
   let browser;
   try {
@@ -101,7 +212,6 @@ async function scrape(url, platform, proxy) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
     await page.waitForTimeout(2500 + Math.random() * 1000);
 
-    // Aceitar cookies
     for (const sel of (CONSENT_SELECTORS[platform] || [])) {
       try {
         const el = await page.$(sel);
@@ -112,20 +222,9 @@ async function scrape(url, platform, proxy) {
     await page.waitForTimeout(2000);
 
     const title = await page.title();
-
-    // Extrair imagem principal (og:image ou primeira img relevante)
     const imageUrl = await page.evaluate(() => {
-      const og = document.querySelector('meta[property="og:image"]')?.content;
-      if (og) return og;
-      const imgs = Array.from(document.querySelectorAll('img[src]'));
-      const big = imgs.find(img => {
-        const src = img.src || '';
-        return src.includes('http') && !src.includes('logo') && !src.includes('icon') &&
-               img.naturalWidth > 200;
-      });
-      return big?.src || null;
+      return document.querySelector('meta[property="og:image"]')?.content || null;
     });
-
     const bodyText = await page.evaluate(() => {
       document.querySelectorAll('script,style,nav,footer,header,iframe,[class*="cookie"],[id*="cookie"],[class*="consent"],[class*="gdpr"],[class*="overlay"]').forEach(e => e.remove());
       return document.body.innerText.split('\n').map(l => l.trim()).filter(l => l.length > 2).join('\n');
@@ -133,7 +232,6 @@ async function scrape(url, platform, proxy) {
 
     await browser.close();
     browser = null;
-
     return { title, bodyText, imageUrl };
   } catch(err) {
     if (browser) await browser.close().catch(()=>{});
@@ -141,7 +239,8 @@ async function scrape(url, platform, proxy) {
   }
 }
 
-app.get('/api/health', (req, res) => res.json({ ok: true, hasKey: !!ANTHROPIC_KEY, hasProxy: !!PROXY_USER }));
+// ── Endpoints ─────────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ ok: true, hasKey: !!ANTHROPIC_KEY }));
 
 app.post('/api/simulate', async (req, res) => {
   const { url } = req.body;
@@ -151,13 +250,11 @@ app.post('/api/simulate', async (req, res) => {
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada.' });
 
   let title, bodyText, imageUrl;
-
   try {
     if (platform === 'mobile.de' && PROXY_USER) {
       let lastErr;
       for (const proxy of PROXIES) {
         try {
-          console.log(`[scrape] mobile.de via ${proxy.server}`);
           const r = await scrape(url, platform, proxy);
           if (r.bodyText.length > 500) { ({ title, bodyText, imageUrl } = r); break; }
           lastErr = new Error('Conteúdo insuficiente');
@@ -168,7 +265,7 @@ app.post('/api/simulate', async (req, res) => {
       console.log(`[scrape] ${platform} → ${url.slice(0, 70)}`);
       const r = await scrape(url, platform, null);
       ({ title, bodyText, imageUrl } = r);
-      console.log(`[scrape] OK — ${bodyText.length} chars | img: ${imageUrl ? 'sim' : 'não'}`);
+      console.log(`[scrape] OK — ${bodyText.length} chars`);
     }
   } catch(err) {
     return res.status(500).json({ error: err.message });
@@ -179,31 +276,33 @@ app.post('/api/simulate', async (req, res) => {
   }
 
   try {
-    const prompt = `Analisa estes dados de um anúncio automóvel e calcula a simulação de importação para Portugal.
+    // Claude extrai APENAS dados do veículo — NÃO calcula ISV
+    const prompt = `Extrai os dados deste anúncio de automóvel. NÃO calcules ISV, impostos ou custos — só os dados do veículo.
 
-Plataforma: ${platform}
 Título: ${title}
+Plataforma: ${platform}
 URL: ${url}
 
 CONTEÚDO:
-${bodyText.slice(0, 10000)}
-
-ISV PORTUGAL 2025:
-- Elétrico puro: 0€
-- Híbrido plug-in: redução 60-75%
-- Gasolina/Diesel: componente cilindrada + CO2 (tabela AT progressiva)
-
-CUSTOS:
-- Transporte: 900-1400€ (conforme país)
-- Inspeção e homologação: 280-420€
-- Legalização e registo: 380-600€
-- Serviço Greenport Select: 2500€ (fixo)
+${bodyText.slice(0, 9000)}
 
 Responde APENAS JSON puro:
 {
-  "veiculo": {"marca":"","modelo":"","versao":"","ano":0,"dataRegisto":"","quilometros":0,"combustivel":"","potenciaCv":0,"cilindrada":0,"co2GKm":0,"caixa":"","cor":"","pais":""},
-  "simulacao": {"valorViatura":0,"isv":0,"isvIsento":false,"transporte":0,"inspecaoHomologacao":0,"legalizacao":0,"servicoGreenport":2500,"totalChaveNaMao":0},
-  "notas":["máx 3 notas específicas"]
+  "marca": "",
+  "modelo": "",
+  "versao": "",
+  "ano": 0,
+  "dataRegisto": "MM/AAAA",
+  "quilometros": 0,
+  "combustivel": "Diesel|Gasolina|Elétrico|Híbrido Plug-in|Híbrido",
+  "potenciaCv": 0,
+  "cilindrada": 0,
+  "co2GKm": 0,
+  "caixa": "Automática|Manual",
+  "cor": "",
+  "pais": "",
+  "precoOrigem": 0,
+  "notas": ["máx 3 notas específicas sobre este veículo — equipamento, estado, garantia, etc."]
 }`;
 
     const claudeText = await callClaude(prompt);
@@ -211,13 +310,46 @@ Responde APENAS JSON puro:
     const e = claudeText.lastIndexOf('}');
     if (s === -1) throw new Error('Resposta inválida.');
 
-    const result = JSON.parse(claudeText.slice(s, e + 1));
-    const sim = result.simulacao;
-    const recalc = (sim.valorViatura||0)+(sim.isv||0)+(sim.transporte||0)+(sim.inspecaoHomologacao||0)+(sim.legalizacao||0)+(sim.servicoGreenport||0);
-    if (Math.abs(recalc-(sim.totalChaveNaMao||0)) > 100) sim.totalChaveNaMao = recalc;
-    result.platform = platform;
-    result.imageUrl = imageUrl || null;
+    const veiculo = JSON.parse(claudeText.slice(s, e + 1));
+    const notas = veiculo.notas || [];
+    delete veiculo.notas;
+
+    // ── ISV calculado server-side com tabelas AT 2025/2026 ──────────────────────
+    const { isv, isvIsento } = calcularISV(veiculo);
+
+    // ── Custos estimados ────────────────────────────────────────────────────────
+    const pais = (veiculo.pais || '').toLowerCase();
+    const transporte = pais.includes('alem') || pais.includes('german') ? 1100
+      : pais.includes('fran') ? 950
+      : pais.includes('ital') ? 1200
+      : pais.includes('espanh') || pais.includes('spain') ? 900
+      : 1100;
+    const inspecaoHomologacao = 350;
+    const legalizacao = 500;
+    const servicoGreenport = 2500;
+
+    const valorViatura = veiculo.precoOrigem || 0;
+    const totalChaveNaMao = valorViatura + isv + transporte + inspecaoHomologacao + legalizacao + servicoGreenport;
+
+    const result = {
+      veiculo,
+      simulacao: {
+        valorViatura,
+        isv,
+        isvIsento,
+        transporte,
+        inspecaoHomologacao,
+        legalizacao,
+        servicoGreenport,
+        totalChaveNaMao,
+      },
+      notas,
+      platform,
+      imageUrl: imageUrl || null,
+    };
+
     res.json(result);
+
   } catch(err) {
     console.error('[claude]', err.message);
     res.status(500).json({ error: err.message });
@@ -227,4 +359,4 @@ Responde APENAS JSON puro:
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✓ Greenport Simulador v4 na porta ${PORT}`));
+app.listen(PORT, () => console.log(`✓ Greenport Simulador v5 — ISV server-side — porta ${PORT}`));
