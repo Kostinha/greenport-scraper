@@ -103,7 +103,16 @@ function calcularISV(v) {
 
   // ── Reduções por tipo de veículo ─────────────────────────────────────────────
   if (isPhev) {
-    isvBase *= 0.25; // Híbrido plug-in: paga só 25%
+    // PHEV: 75% de desconto (paga 25%) SE cumprir critérios AT 2025/2026:
+    // — Autonomia elétrica >= 50 km
+    // — CO2 <= 50 g/km (Euro 6) OU <= 80 g/km (Euro 6e-bis, veículos >= 2026)
+    const autonomia = Number(v.autonomiaEletricaKm) || 0;
+    const limCo2 = ano >= 2026 ? 80 : 50; // Euro 6e-bis a partir de 2026
+    const phevElegivel = autonomia >= 50 && co2 <= limCo2;
+    if (phevElegivel) {
+      isvBase *= 0.25;
+    }
+    // Se não cumprir critérios: paga ISV normal (sem desconto PHEV)
   } else if (isMildHybrid) {
     isvBase *= 0.60; // Mild hybrid / full hybrid: paga 60%
   }
@@ -295,6 +304,7 @@ Responde APENAS JSON puro:
   "dataRegisto": "MM/AAAA",
   "quilometros": 0,
   "combustivel": "Diesel|Gasolina|Elétrico|Híbrido Plug-in|Híbrido",
+  "autonomiaEletricaKm": 0,
   "potenciaCv": 0,
   "cilindrada": 0,
   "co2GKm": 0,
